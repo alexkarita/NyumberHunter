@@ -1,65 +1,196 @@
-import Image from "next/image";
+'use client'
+
+import { useState } from 'react'
+
+const ALL_LISTINGS = [
+  { id:1, title:'1 Bed — Ruaka', area:'ruaka', price:12000, bedrooms:1, furnished:false, water:'reliable', description:'Near Junction Mall. Water reliable. Tarmac road.', tags:['1 Bed','Unfurnished','Water ✓'], waterColor:'green' },
+  { id:2, title:'Bedsitter — Ruiru', area:'ruiru', price:7500, bedrooms:0, furnished:true, water:'occasional', description:'Ruiru town centre. Close to stage. Secure compound.', tags:['Bedsitter','Furnished','Water ~'], waterColor:'yellow' },
+  { id:3, title:'1 Bed — Thika Road', area:'thika-road', price:14000, bedrooms:1, furnished:false, water:'reliable', description:'Kasarani area. Quiet estate. Good security.', tags:['1 Bed','Unfurnished','Water ✓'], waterColor:'green' },
+  { id:4, title:'Bedsitter — Ruaka', area:'ruaka', price:9000, bedrooms:0, furnished:false, water:'reliable', description:'Ruaka near Quickmart. Safe neighbourhood.', tags:['Bedsitter','Unfurnished','Water ✓'], waterColor:'green' },
+]
 
 export default function Home() {
+  const [area, setArea] = useState('')
+  const [price, setPrice] = useState('')
+  const [bedrooms, setBedrooms] = useState('')
+  const [listings, setListings] = useState(ALL_LISTINGS)
+  const [wishlist, setWishlist] = useState([])
+
+  function handleSearch() {
+    let results = ALL_LISTINGS
+
+    if (area) {
+      results = results.filter(l => l.area === area)
+    }
+    if (price) {
+      results = results.filter(l => l.price <= parseInt(price))
+    }
+    if (bedrooms) {
+      results = results.filter(l => l.bedrooms === parseInt(bedrooms))
+    }
+
+    setListings(results)
+  }
+
+  function toggleWishlist(id) {
+    setWishlist(prev =>
+      prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id]
+    )
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-gray-950 text-white">
+
+      {/* NAVBAR */}
+      <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-blue-400">🏠 NyumbaHunter</h1>
+          <div className="flex gap-4 items-center">
+            <button className="text-gray-400 hover:text-white">Listings</button>
+            <button className="text-gray-400 hover:text-white">
+              Wishlist
+              {wishlist.length > 0 && (
+                <span className="ml-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+                  {wishlist.length}
+                </span>
+              )}
+            </button>
+            <button className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold">
+              Sign In
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </nav>
+
+      {/* HERO */}
+      <section className="max-w-6xl mx-auto px-6 py-16 text-center">
+        <h2 className="text-5xl font-bold mb-4">
+          Find Your House in <span className="text-blue-400">Ruaka & Ruiru</span>
+        </h2>
+        <p className="text-gray-400 text-xl mb-8">
+          AI-powered house hunting. Under Ksh 15,000. No agent fees.
+        </p>
+
+        {/* SEARCH BAR */}
+        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <select
+              value={area}
+              onChange={e => setArea(e.target.value)}
+              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
+            >
+              <option value="">All Areas</option>
+              <option value="ruaka">Ruaka</option>
+              <option value="ruiru">Ruiru</option>
+              <option value="thika-road">Thika Road</option>
+              <option value="kasarani">Kasarani</option>
+            </select>
+
+            <select
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
+            >
+              <option value="">Max Price</option>
+              <option value="8000">Ksh 8,000</option>
+              <option value="10000">Ksh 10,000</option>
+              <option value="12000">Ksh 12,000</option>
+              <option value="15000">Ksh 15,000</option>
+            </select>
+
+            <select
+              value={bedrooms}
+              onChange={e => setBedrooms(e.target.value)}
+              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
+            >
+              <option value="">Bedrooms</option>
+              <option value="0">Bedsitter</option>
+              <option value="1">1 Bedroom</option>
+              <option value="2">2 Bedrooms</option>
+              <option value="3">3 Bedrooms</option>
+            </select>
+
+          </div>
+          <button
+            onClick={handleSearch}
+            className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-lg transition"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Search Houses
+          </button>
         </div>
-      </main>
-    </div>
-  );
+      </section>
+
+      {/* LISTINGS */}
+      <section className="max-w-6xl mx-auto px-6 pb-16">
+        <h3 className="text-2xl font-bold mb-6 text-gray-100">
+          Available Now{' '}
+          <span className="text-blue-400 text-lg font-normal ml-2">
+            {listings.length} listings
+          </span>
+        </h3>
+
+        {listings.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            <p className="text-5xl mb-4">🏚️</p>
+            <p className="text-xl">No listings found. Try different filters.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {listings.map(listing => (
+              <div
+                key={listing.id}
+                className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden hover:border-blue-500 transition cursor-pointer"
+              >
+                <div className="bg-gray-700 h-48 flex items-center justify-center text-gray-500 text-sm">
+                  📷 Photo coming soon
+                </div>
+                <div className="p-5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-lg">{listing.title}</h4>
+                    <span className="text-blue-400 font-bold">
+                      Ksh {listing.price.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-3">{listing.description}</p>
+                  <div className="flex gap-2 flex-wrap mb-4">
+                    {listing.tags.map(tag => (
+                      <span
+                        key={tag}
+                        className={`text-xs px-2 py-1 rounded ${
+                          tag.includes('Water')
+                            ? listing.waterColor === 'green'
+                              ? 'bg-green-900 text-green-400'
+                              : 'bg-yellow-900 text-yellow-400'
+                            : 'bg-gray-800 text-gray-300'
+                        }`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition">
+                      View Details
+                    </button>
+                    <button
+                      onClick={() => toggleWishlist(listing.id)}
+                      className={`px-3 py-2 border rounded-lg transition ${
+                        wishlist.includes(listing.id)
+                          ? 'border-red-400 text-red-400'
+                          : 'border-gray-600 text-gray-400 hover:border-red-400 hover:text-red-400'
+                      }`}
+                    >
+                      {wishlist.includes(listing.id) ? '♥' : '♡'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+    </main>
+  )
 }
