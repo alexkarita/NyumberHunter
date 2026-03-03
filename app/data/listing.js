@@ -1,0 +1,28 @@
+export const listings = [
+  {
+    id: 1,
+    title: "1 Bed — Ruaka",
+    area: "Ruaka",
+    price: 12000,
+    bedrooms: 1,
+    description: "Near Junction Mall. Water reliable. Tarmac road.",
+    tags: ["1 Bed", "furnished", "Water ✓"],
+    waterColor: "green",
+    phone: "0712345678",
+    images: ["/house1.jpg", "/house2.jpg"],
+    location: "Ruaka Stage",
+  },
+  {
+    id: 2,
+    title: "Bedsitter — Ruiru",
+    area: "Ruiru",
+    price: 7500,
+    bedrooms: 0,
+    description: "Ruiru town centre. Close to stage.",
+    tags: ["Bedsitter", "Unfurnished", "Water ~"],
+    waterColor: "yellow",
+    phone: "0798765432",
+    images: ["/house3.jpg"],
+    location: "Ruiru Town",
+  },
+];

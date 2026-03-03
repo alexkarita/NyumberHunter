@@ -1,41 +1,31 @@
-'use client'
-
-import { useState } from 'react'
-
-const ALL_LISTINGS = [
-  { id:1, title:'1 Bed — Ruaka', area:'ruaka', price:12000, bedrooms:1, furnished:false, water:'reliable', description:'Near Junction Mall. Water reliable. Tarmac road.', tags:['1 Bed','Unfurnished','Water ✓'], waterColor:'green' },
-  { id:2, title:'Bedsitter — Ruiru', area:'ruiru', price:7500, bedrooms:0, furnished:true, water:'occasional', description:'Ruiru town centre. Close to stage. Secure compound.', tags:['Bedsitter','Furnished','Water ~'], waterColor:'yellow' },
-  { id:3, title:'1 Bed — Thika Road', area:'thika-road', price:14000, bedrooms:1, furnished:false, water:'reliable', description:'Kasarani area. Quiet estate. Good security.', tags:['1 Bed','Unfurnished','Water ✓'], waterColor:'green' },
-  { id:4, title:'Bedsitter — Ruaka', area:'ruaka', price:9000, bedrooms:0, furnished:false, water:'reliable', description:'Ruaka near Quickmart. Safe neighbourhood.', tags:['Bedsitter','Unfurnished','Water ✓'], waterColor:'green' },
-]
-
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 export default function Home() {
-  const [area, setArea] = useState('')
-  const [price, setPrice] = useState('')
-  const [bedrooms, setBedrooms] = useState('')
-  const [listings, setListings] = useState(ALL_LISTINGS)
-  const [wishlist, setWishlist] = useState([])
+  const [area, setArea] = useState("All");
+  const [maxPrice, setMaxPrice] = useState(15000);
+  const [bedrooms, setBedrooms] = useState("All");
+  const [wishlist, setWishlist] = useState([]);
+  const router = useRouter();
 
-  function handleSearch() {
-    let results = ALL_LISTINGS
+  const listings = [
+    { id: 1, title: "1 Bed — Ruaka", area: "Ruaka", price: 12000, bedrooms: 1, description: "Near Junction Mall. Water reliable. Tarmac road.", tags: ["1 Bed", "Unfurnished", "Water ✓"], waterColor: "green" },
+    { id: 2, title: "Bedsitter — Ruiru", area: "Ruiru", price: 7500, bedrooms: 0, description: "Ruiru town centre. Close to stage. Secure compound.", tags: ["Bedsitter", "Furnished", "Water ~"], waterColor: "yellow" },
+    { id: 3, title: "1 Bed — Thika Road", area: "Thika Road", price: 14000, bedrooms: 1, description: "Kasarani area. Quiet estate. Good security.", tags: ["1 Bed", "Unfurnished", "Water ✓"], waterColor: "green" },
+    { id: 4, title: "Bedsitter — Ruaka", area: "Ruaka", price: 9000, bedrooms: 0, description: "Ruaka near Quickmart. Safe neighbourhood.", tags: ["Bedsitter", "Unfurnished", "Water ✓"], waterColor: "green" },
+  ];
 
-    if (area) {
-      results = results.filter(l => l.area === area)
-    }
-    if (price) {
-      results = results.filter(l => l.price <= parseInt(price))
-    }
-    if (bedrooms) {
-      results = results.filter(l => l.bedrooms === parseInt(bedrooms))
-    }
-
-    setListings(results)
-  }
+  const filteredListings = listings.filter((listing) => {
+    const areaMatch = area === "All" || listing.area === area;
+    const priceMatch = listing.price <= maxPrice;
+    const bedroomMatch = bedrooms === "All" || listing.bedrooms.toString() === bedrooms;
+    return areaMatch && priceMatch && bedroomMatch;
+  });
 
   function toggleWishlist(id) {
-    setWishlist(prev =>
-      prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id]
-    )
+    setWishlist((prev) =>
+      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
+    );
   }
 
   return (
@@ -77,45 +67,39 @@ export default function Home() {
 
             <select
               value={area}
-              onChange={e => setArea(e.target.value)}
+              onChange={(e) => setArea(e.target.value)}
               className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
             >
-              <option value="">All Areas</option>
-              <option value="ruaka">Ruaka</option>
-              <option value="ruiru">Ruiru</option>
-              <option value="thika-road">Thika Road</option>
-              <option value="kasarani">Kasarani</option>
+              <option value="All">All Areas</option>
+              <option value="Ruaka">Ruaka</option>
+              <option value="Ruiru">Ruiru</option>
+              <option value="Thika Road">Thika Road</option>
             </select>
 
             <select
-              value={price}
-              onChange={e => setPrice(e.target.value)}
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(Number(e.target.value))}
               className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
             >
-              <option value="">Max Price</option>
-              <option value="8000">Ksh 8,000</option>
-              <option value="10000">Ksh 10,000</option>
-              <option value="12000">Ksh 12,000</option>
-              <option value="15000">Ksh 15,000</option>
+              <option value={8000}>Ksh 8,000</option>
+              <option value={10000}>Ksh 10,000</option>
+              <option value={12000}>Ksh 12,000</option>
+              <option value={15000}>Ksh 15,000</option>
             </select>
 
             <select
               value={bedrooms}
-              onChange={e => setBedrooms(e.target.value)}
+              onChange={(e) => setBedrooms(e.target.value)}
               className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
             >
-              <option value="">Bedrooms</option>
+              <option value="All">Bedrooms</option>
               <option value="0">Bedsitter</option>
               <option value="1">1 Bedroom</option>
               <option value="2">2 Bedrooms</option>
-              <option value="3">3 Bedrooms</option>
             </select>
 
           </div>
-          <button
-            onClick={handleSearch}
-            className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-lg transition"
-          >
+          <button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-lg transition">
             Search Houses
           </button>
         </div>
@@ -123,21 +107,21 @@ export default function Home() {
 
       {/* LISTINGS */}
       <section className="max-w-6xl mx-auto px-6 pb-16">
-        <h3 className="text-2xl font-bold mb-6 text-gray-100">
-          Available Now{' '}
+        <h3 className="text-2xl font-bold mb-6">
+          Available Now{" "}
           <span className="text-blue-400 text-lg font-normal ml-2">
-            {listings.length} listings
+            {filteredListings.length} listings
           </span>
         </h3>
 
-        {listings.length === 0 ? (
+        {filteredListings.length === 0 ? (
           <div className="text-center py-20 text-gray-500">
             <p className="text-5xl mb-4">🏚️</p>
             <p className="text-xl">No listings found. Try different filters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {listings.map(listing => (
+            {filteredListings.map((listing) => (
               <div
                 key={listing.id}
                 className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden hover:border-blue-500 transition cursor-pointer"
@@ -153,35 +137,42 @@ export default function Home() {
                     </span>
                   </div>
                   <p className="text-gray-400 text-sm mb-3">{listing.description}</p>
+
+                  {/* TAGS */}
                   <div className="flex gap-2 flex-wrap mb-4">
-                    {listing.tags.map(tag => (
+                    {listing.tags.map((tag) => (
                       <span
                         key={tag}
                         className={`text-xs px-2 py-1 rounded ${
-                          tag.includes('Water')
-                            ? listing.waterColor === 'green'
-                              ? 'bg-green-900 text-green-400'
-                              : 'bg-yellow-900 text-yellow-400'
-                            : 'bg-gray-800 text-gray-300'
+                          tag.includes("Water")
+                            ? listing.waterColor === "green"
+                              ? "bg-green-900 text-green-400"
+                              : "bg-yellow-900 text-yellow-400"
+                            : "bg-gray-800 text-gray-300"
                         }`}
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
+
+                  {/* BUTTONS */}
                   <div className="flex gap-2">
-                    <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition">
+                    <button
+                      onClick={() => router.push(`/listing/${listing.id}`)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition"
+                    >
                       View Details
                     </button>
                     <button
                       onClick={() => toggleWishlist(listing.id)}
                       className={`px-3 py-2 border rounded-lg transition ${
                         wishlist.includes(listing.id)
-                          ? 'border-red-400 text-red-400'
-                          : 'border-gray-600 text-gray-400 hover:border-red-400 hover:text-red-400'
+                          ? "border-red-400 text-red-400"
+                          : "border-gray-600 text-gray-400 hover:border-red-400 hover:text-red-400"
                       }`}
                     >
-                      {wishlist.includes(listing.id) ? '♥' : '♡'}
+                      {wishlist.includes(listing.id) ? "♥" : "♡"}
                     </button>
                   </div>
                 </div>
@@ -192,5 +183,5 @@ export default function Home() {
       </section>
 
     </main>
-  )
+  );
 }
