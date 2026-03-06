@@ -32,10 +32,32 @@ export default function Home() {
 
   useEffect(() => {
     async function getUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        const { data: prefs } = await supabase
+          .from("preferences")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .single();
+
+        if (prefs) {
+          if (prefs.max_budget) setMaxPrice(prefs.max_budget);
+          if (prefs.min_bedrooms !== null) setBedrooms(prefs.min_bedrooms.toString());
+          if (prefs.preferred_areas && prefs.preferred_areas.length > 0) {
+            setArea(prefs.preferred_areas[0]);
+          }
+        }
+      }
     }
     getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const filteredListings = listings.filter((listing) => {
@@ -45,10 +67,27 @@ export default function Home() {
     return areaMatch && priceMatch && bedroomMatch;
   });
 
-  function toggleWishlist(id) {
-    setWishlist((prev) =>
-      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
-    );
+ async function toggleWishlist(listingId) {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const isWishlisted = wishlist.includes(listingId);
+
+    if (isWishlisted) {
+      await supabase
+        .from("favourites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("listing_id", listingId);
+      setWishlist((prev) => prev.filter((id) => id !== listingId));
+    } else {
+      await supabase
+        .from("favourites")
+        .insert({ user_id: user.id, listing_id: listingId });
+      setWishlist((prev) => [...prev, listingId]);
+    }
   }
 
   return (
@@ -59,7 +98,14 @@ export default function Home() {
           <h1 className="text-2xl font-bold text-blue-400">NyumbaHunter</h1>
           <div className="flex gap-4 items-center">
             <button className="text-gray-400 hover:text-white">Listings</button>
-            <button className="text-gray-400 hover:text-white">
+            <button
+             onClick={() => router.push("/preferences")}
+             className="text-gray-400 hover:text-white">
+             Preferences
+            </button>
+            <button
+              onClick={() => router.push("/wishlist")}
+              className="text-gray-400 hover:text-white">
               Wishlist
               {wishlist.length > 0 && (
                 <span className="ml-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
