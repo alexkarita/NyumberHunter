@@ -97,11 +97,16 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-400">NyumbaHunter</h1>
           <div className="flex gap-4 items-center">
-            <button className="text-gray-400 hover:text-white">Listings</button>
+           <button className="text-gray-400 hover:text-white">Listings</button>
             <button
-             onClick={() => router.push("/preferences")}
-             className="text-gray-400 hover:text-white">
-             Preferences
+               onClick={() => router.push("/chat")}
+               className="text-gray-400 hover:text-white">
+               AI Chat
+            </button>
+            <button
+              onClick={() => router.push("/preferences")}
+              className="text-gray-400 hover:text-white">
+              Preferences
             </button>
             <button
               onClick={() => router.push("/wishlist")}
