@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "./lib/supabase";
 
@@ -11,6 +11,11 @@ export default function Home() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [preferences, setPreferences] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [recsMessage, setRecsMessage] = useState("");
+  const agentFiredRef = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -32,6 +37,7 @@ export default function Home() {
 
   useEffect(() => {
     async function getUser() {
+      await new Promise((resolve) => setTimeout(resolve, 500));
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
 
@@ -48,6 +54,26 @@ export default function Home() {
           if (prefs.preferred_areas && prefs.preferred_areas.length > 0) {
             setArea(prefs.preferred_areas[0]);
           }
+          setPreferences(prefs);
+
+          const lastRun = localStorage.getItem("agentLastRun");
+          const now = Date.now();
+          const oneDay = 24 * 60 * 60 * 1000;
+          if (prefs.whatsapp_number && !agentFiredRef.current && (!lastRun || now - parseInt(lastRun) > oneDay)) {
+            agentFiredRef.current = true;
+            localStorage.setItem("agentLastRun", now.toString());
+            fetch("/api/agent", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: session.user.id,
+                userPhone: prefs.whatsapp_number,
+              }),
+            })
+              .then((res) => res.json())
+              .then((data) => console.log("Agent result:", data))
+              .catch((err) => console.error("Agent error:", err));
+          }
         }
       }
     }
@@ -60,6 +86,40 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    async function fetchRecommendations() {
+      if (!preferences || listings.length === 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      setRecsLoading(true);
+
+      try {
+        const response = await fetch("/api/recommendations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preferences, listings }),
+        });
+        const data = await response.json();
+        if (data.listings) {
+          const seen = new Set();
+          const matched = data.listings.map((rec) => {
+            if (seen.has(rec.id)) return null;
+            seen.add(rec.id);
+            const full = listings.find((l) => l.id === rec.id);
+            return full ? { ...full, rank: rec.rank, reason: rec.reason } : null;
+          }).filter(Boolean);
+          setRecommendations(matched);
+          setRecsMessage(data.message);
+        }
+      } catch (error) {
+        console.error("Recommendations error:", error);
+      }
+
+      setRecsLoading(false);
+    }
+
+    fetchRecommendations();
+  }, [preferences, listings]);
+
   const filteredListings = listings.filter((listing) => {
     const areaMatch = area === "All" || listing.area === area;
     const priceMatch = listing.price <= maxPrice;
@@ -67,7 +127,7 @@ export default function Home() {
     return areaMatch && priceMatch && bedroomMatch;
   });
 
- async function toggleWishlist(listingId) {
+  async function toggleWishlist(listingId) {
     if (!user) {
       router.push("/login");
       return;
@@ -97,11 +157,11 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-400">NyumbaHunter</h1>
           <div className="flex gap-4 items-center">
-           <button className="text-gray-400 hover:text-white">Listings</button>
+            <button className="text-gray-400 hover:text-white">Listings</button>
             <button
-               onClick={() => router.push("/chat")}
-               className="text-gray-400 hover:text-white">
-               AI Chat
+              onClick={() => router.push("/chat")}
+              className="text-gray-400 hover:text-white">
+              AI Chat
             </button>
             <button
               onClick={() => router.push("/preferences")}
@@ -120,14 +180,16 @@ export default function Home() {
             </button>
             {user ? (
               <button
-                  onClick={async () => {
-                    await supabase.auth.signOut();
-                    setUser(null);
-                  }}
-                  className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-semibold"
-                >
-                  Log Out
-                </button>
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setUser(null);
+                  localStorage.removeItem("agentLastRun");
+                  router.push("/login");
+                }}
+                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-semibold"
+              >
+                Log Out
+              </button>
             ) : (
               <button
                 onClick={() => router.push("/login")}
@@ -188,6 +250,80 @@ export default function Home() {
           </button>
         </div>
       </section>
+
+      {user && (recsLoading || recommendations.length > 0) && (
+        <section className="max-w-6xl mx-auto px-6 pb-10">
+          <div className="flex items-center gap-3 mb-6">
+            <h3 className="text-2xl font-bold">✨ Recommended for you</h3>
+            {recsLoading && (
+              <span className="text-gray-500 text-sm">Finding best matches...</span>
+            )}
+          </div>
+
+          {recsMessage && !recsLoading && (
+            <p className="text-gray-400 text-sm mb-6">{recsMessage}</p>
+          )}
+
+          {recsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden animate-pulse">
+                  <div className="bg-gray-800 h-48" />
+                  <div className="p-5 space-y-3">
+                    <div className="bg-gray-800 h-4 rounded w-3/4" />
+                    <div className="bg-gray-800 h-3 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {recommendations.map((listing) => (
+                <div
+                  key={listing.id}
+                  className="bg-gray-900 border border-blue-800 rounded-2xl overflow-hidden hover:border-blue-500 transition cursor-pointer"
+                >
+                  <div className="bg-gray-700 h-48 flex items-center justify-center text-gray-500 text-sm">
+                    Photos coming soon
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">
+                        {listing.rank === 1 ? "🥇" : listing.rank === 2 ? "🥈" : "🥉"}
+                      </span>
+                      <h4 className="font-bold text-lg">{listing.title}</h4>
+                    </div>
+                    <p className="text-blue-400 font-bold mb-2">
+                      Ksh {listing.price?.toLocaleString()}
+                    </p>
+                    <p className="text-green-400 text-xs mb-3 bg-green-900/20 border border-green-800 rounded-lg px-3 py-2">
+                      💡 {listing.reason}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => router.push(`/listing/${listing.id}`)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() => toggleWishlist(listing.id)}
+                        className={`px-3 py-2 border rounded-lg transition ${
+                          wishlist.includes(listing.id)
+                            ? "border-red-400 text-red-400"
+                            : "border-gray-600 text-gray-400 hover:border-red-400 hover:text-red-400"
+                        }`}
+                      >
+                        {wishlist.includes(listing.id) ? "♥" : "♡"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="max-w-6xl mx-auto px-6 pb-16">
         <h3 className="text-2xl font-bold mb-6">

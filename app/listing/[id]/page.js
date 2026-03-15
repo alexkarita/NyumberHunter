@@ -103,9 +103,7 @@ export default function ListingDetail({ params }) {
         <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
           <div>
             <h2 className="text-3xl font-bold">{listing.title}</h2>
-            <p className="text-gray-400 text-sm mt-1">
-              {listing.location}
-            </p>
+            <p className="text-gray-400 text-sm mt-1">{listing.location}</p>
           </div>
 
           <div className="bg-blue-900/30 border border-blue-700 rounded-xl px-6 py-4 text-center">
@@ -168,35 +166,30 @@ export default function ListingDetail({ params }) {
             <h3 className="text-xl font-bold mb-4">Area Intelligence</h3>
 
             <div className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden mb-6">
-
               <div className="flex justify-between items-center px-6 py-4 border-b border-gray-800">
                 <span className="text-gray-400 text-sm">Water Supply</span>
                 <span className={`font-semibold text-sm ${getWaterColor(listing.water_reliability)}`}>
                   {listing.water_reliability}
                 </span>
               </div>
-
               <div className="flex justify-between items-center px-6 py-4 border-b border-gray-800">
                 <span className="text-gray-400 text-sm">Flooding Risk</span>
                 <span className={`font-semibold text-sm ${getFloodColor(listing.flooding_risk)}`}>
                   {listing.flooding_risk}
                 </span>
               </div>
-
               <div className="flex justify-between items-center px-6 py-4 border-b border-gray-800">
                 <span className="text-gray-400 text-sm">Security Rating</span>
                 <span className="font-semibold text-sm text-yellow-400">
                   {getSecurityStars(listing.security_rating)} ({listing.security_rating}/10)
                 </span>
               </div>
-
               <div className="flex justify-between items-center px-6 py-4">
                 <span className="text-gray-400 text-sm">Road Quality</span>
                 <span className="font-semibold text-sm">
                   {listing.road_quality}
                 </span>
               </div>
-
             </div>
 
             <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6">
