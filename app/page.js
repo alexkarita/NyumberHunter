@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "./lib/supabase";
+import dynamic from "next/dynamic";
+const Map = dynamic(() => import("./components/Map"), { ssr: false });
 
 export default function Home() {
   const [area, setArea] = useState("All");
@@ -15,6 +17,8 @@ export default function Home() {
   const [recommendations, setRecommendations] = useState([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsMessage, setRecsMessage] = useState("");
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [showMap, setShowMap] = useState(false);
   const agentFiredRef = useRef(false);
   const router = useRouter();
 
@@ -49,11 +53,6 @@ export default function Home() {
           .single();
 
         if (prefs) {
-          if (prefs.max_budget) setMaxPrice(prefs.max_budget);
-          if (prefs.min_bedrooms !== null) setBedrooms(prefs.min_bedrooms.toString());
-          if (prefs.preferred_areas && prefs.preferred_areas.length > 0) {
-            setArea(prefs.preferred_areas[0]);
-          }
           setPreferences(prefs);
 
           const lastRun = localStorage.getItem("agentLastRun");
@@ -326,14 +325,90 @@ export default function Home() {
       )}
 
       <section className="max-w-6xl mx-auto px-6 pb-16">
-        <h3 className="text-2xl font-bold mb-6">
-          Available Now{" "}
-          <span className="text-blue-400 text-lg font-normal ml-2">
-            {loading ? "..." : `${filteredListings.length} listings`}
-          </span>
-        </h3>
+        <div className="flex items-center gap-4 mb-6">
+          <h3 className="text-2xl font-bold">
+            Available Now{" "}
+            <span className="text-blue-400 text-lg font-normal ml-2">
+              {loading ? "..." : `${filteredListings.length} listings`}
+            </span>
+          </h3>
+          <div className="flex gap-2 ml-auto">
+            <button
+              onClick={() => setShowMap(false)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                !showMap ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setShowMap(true)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                showMap ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"
+              }`}
+            >
+              Map
+            </button>
+          </div>
+        </div>
 
-        {loading ? (
+        {showMap ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+              <Map
+                listings={filteredListings}
+                onListingClick={(listing) => setSelectedListing(listing)}
+              />
+            </div>
+            <div>
+              {selectedListing ? (
+                <div className="bg-gray-900 border border-blue-700 rounded-2xl p-5">
+                  <div className="bg-gray-700 h-40 rounded-xl flex items-center justify-center text-gray-500 text-sm mb-4">
+                    Photos coming soon
+                  </div>
+                  <h4 className="font-bold text-lg mb-1">{selectedListing.title}</h4>
+                  <p className="text-blue-400 font-bold text-xl mb-3">
+                    Ksh {selectedListing.price?.toLocaleString()}/month
+                  </p>
+                  <div className="space-y-2 mb-4">
+                    <p className="text-gray-400 text-sm">
+                      🛏️ {selectedListing.bedrooms === 0 ? "Bedsitter" : `${selectedListing.bedrooms} Bedroom`}
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      💧 Water: {selectedListing.water_reliability}
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      🔒 Security: {selectedListing.security_rating}/10
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      🛣️ Road: {selectedListing.road_quality}
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      🪑 {selectedListing.furnished ? "Furnished" : "Unfurnished"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/listing/${selectedListing.id}`)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition"
+                  >
+                    View Full Details →
+                  </button>
+                  <button
+                    onClick={() => setSelectedListing(null)}
+                    className="w-full mt-2 text-gray-500 text-sm hover:text-gray-300"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 text-center text-gray-500">
+                  <p className="text-4xl mb-3">📍</p>
+                  <p>Click any pin on the map to see listing details</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
               <div key={n} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden animate-pulse">

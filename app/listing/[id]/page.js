@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 
@@ -10,6 +10,8 @@ export default function ListingDetail({ params }) {
 
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
 
   useEffect(() => {
     async function fetchListing() {
@@ -31,6 +33,51 @@ export default function ListingDetail({ params }) {
 
     fetchListing();
   }, [id]);
+
+  useEffect(() => {
+    if (!listing || !listing.lat || !listing.lng) return;
+    if (mapInstanceRef.current) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => {
+      const L = window.L;
+      if (!mapRef.current || mapInstanceRef.current) return;
+
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
+      const map = L.map(mapRef.current).setView([listing.lat, listing.lng], 15);
+      mapInstanceRef.current = map;
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      L.marker([listing.lat, listing.lng])
+        .addTo(map)
+        .bindPopup(`<b>${listing.title}</b><br>Ksh ${listing.price.toLocaleString()}/month`)
+        .openPopup();
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [listing]);
 
   if (loading) {
     return (
@@ -160,6 +207,26 @@ export default function ListingDetail({ params }) {
                 </button>
               </div>
             </div>
+
+            {listing.lat && listing.lng && (
+              <div className="mt-8">
+                <h3 className="text-xl font-bold mb-4">📍 Location & Directions</h3>
+                <div
+                  ref={mapRef}
+                  style={{ height: '300px', width: '100%', borderRadius: '16px', zIndex: 1 }}
+                  className="mb-4"
+                />
+                <button
+                  onClick={() => window.open(
+                    `https://www.google.com/maps/dir/?api=1&destination=${listing.lat},${listing.lng}`,
+                    "_blank"
+                  )}
+                  className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-semibold transition"
+                >
+                  🗺️ Get Directions on Google Maps
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
