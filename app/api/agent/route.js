@@ -50,7 +50,7 @@ export async function POST(request) {
       "1. " + top3[0]?.title + "\nKsh " + top3[0]?.price + "/month\n\n" +
       "2. " + top3[1]?.title + "\nKsh " + top3[1]?.price + "/month\n\n" +
       "3. " + top3[2]?.title + "\nKsh " + top3[2]?.price + "/month\n\n" +
-      "Visit: https://nyumbahunter.vercel.app";
+      "Visit: https://nyumber-hunter-wc54.vercel.app";
 
     const waRes = await fetch(
       "https://graph.facebook.com/v18.0/" + process.env.WHATSAPP_PHONE_ID + "/messages",
