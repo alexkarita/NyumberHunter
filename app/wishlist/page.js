@@ -2,8 +2,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import ListingImage from "../components/ListingImage";
 
 export default function Wishlist() {
+  const [wishlist, setWishlist] = useState([]);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -11,51 +13,53 @@ export default function Wishlist() {
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.push("/login");
         return;
       }
+      setUser(session.user);
 
-      setUser(user);
-
-      const { data, error } = await supabase
+      const { data: favs } = await supabase
         .from("favourites")
-        .select("listing_id, listings(*)")
-        .eq("user_id", user.id);
+        .select("listing_id")
+        .eq("user_id", session.user.id);
 
-      if (error) {
-        console.error("Error fetching wishlist:", error);
-      } else {
-        setListings(data.map((f) => f.listings));
+      if (favs && favs.length > 0) {
+        const ids = favs.map((f) => f.listing_id);
+        setWishlist(ids);
+
+        const { data: listingData } = await supabase
+          .from("listings")
+          .select("*")
+          .in("id", ids);
+
+        if (listingData) setListings(listingData);
       }
 
       setLoading(false);
     }
-
     init();
   }, []);
 
   async function removeFromWishlist(listingId) {
-    const { data: { user } } = await supabase.auth.getUser();
     await supabase
       .from("favourites")
       .delete()
       .eq("user_id", user.id)
       .eq("listing_id", listingId);
 
+    setWishlist((prev) => prev.filter((id) => id !== listingId));
     setListings((prev) => prev.filter((l) => l.id !== listingId));
   }
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
-
-      <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4">
+      <nav className="bg-gray-900 border-b border-gray-800 px-4 py-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1
             onClick={() => router.push("/")}
-            className="text-2xl font-bold text-blue-400 cursor-pointer"
+            className="text-xl font-bold text-blue-400 cursor-pointer"
           >
             NyumbaHunter
           </h1>
@@ -68,9 +72,8 @@ export default function Wishlist() {
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        <h2 className="text-3xl font-bold mb-2">My Wishlist</h2>
-        <p className="text-gray-400 mb-8">Houses you have saved</p>
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <h2 className="text-3xl font-bold mb-8">♥ My Wishlist</h2>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -86,13 +89,13 @@ export default function Wishlist() {
           </div>
         ) : listings.length === 0 ? (
           <div className="text-center py-20 text-gray-500">
-            <p className="text-5xl mb-4">🏚️</p>
-            <p className="text-xl mb-6">No saved listings yet</p>
+            <p className="text-5xl mb-4">💔</p>
+            <p className="text-xl mb-4">Your wishlist is empty</p>
             <button
               onClick={() => router.push("/")}
-              className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl text-white font-semibold transition"
+              className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-semibold"
             >
-              Browse listings
+              Browse Listings
             </button>
           </div>
         ) : (
@@ -102,17 +105,31 @@ export default function Wishlist() {
                 key={listing.id}
                 className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden hover:border-blue-500 transition"
               >
-                <div className="bg-gray-700 h-48 flex items-center justify-center text-gray-500 text-sm">
-                  Photos coming soon
-                </div>
+                <ListingImage title={listing.title} id={listing.id} />
                 <div className="p-5">
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-bold text-lg">{listing.title}</h4>
-                    <span className="text-blue-400 font-bold">
+                    <span className="text-blue-400 font-bold text-sm">
                       Ksh {listing.price.toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-gray-400 text-sm mb-4">{listing.description}</p>
+                  <p className="text-gray-400 text-sm mb-3">{listing.description}</p>
+
+                  <div className="flex gap-2 flex-wrap mb-4">
+                    <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded">
+                      {listing.bedrooms === 0 ? "Bedsitter" : `${listing.bedrooms} Bed`}
+                    </span>
+                    <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded">
+                      {listing.furnished ? "Furnished" : "Unfurnished"}
+                    </span>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      listing.water_reliability === "Reliable"
+                        ? "bg-green-900 text-green-400"
+                        : "bg-yellow-900 text-yellow-400"
+                    }`}>
+                      Water: {listing.water_reliability}
+                    </span>
+                  </div>
 
                   <div className="flex gap-2">
                     <button
@@ -123,9 +140,9 @@ export default function Wishlist() {
                     </button>
                     <button
                       onClick={() => removeFromWishlist(listing.id)}
-                      className="px-3 py-2 border border-red-400 text-red-400 hover:bg-red-900 rounded-lg transition"
+                      className="px-3 py-2 border border-red-400 text-red-400 rounded-lg transition hover:bg-red-900/20"
                     >
-                      Remove
+                      ♥
                     </button>
                   </div>
                 </div>

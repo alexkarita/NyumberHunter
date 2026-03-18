@@ -8,7 +8,7 @@ export async function POST(request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-       "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
         model: "llama-3.1-8b-instant",
@@ -16,43 +16,40 @@ export async function POST(request) {
         messages: [
           {
             role: "system",
-            content: `You are a house hunting assistant for NyumbaHunter. Always respond in JSON format only. No markdown, no extra text.`
+            content: `You are a house hunting assistant. Always respond with valid JSON only. No markdown, no backticks, no extra text. Only output the JSON object.`
           },
           {
             role: "user",
-            content: `A user has these preferences:
-- Preferred areas: ${preferences.preferred_areas?.join(", ") || "Any"}
-- Max budget: Ksh ${preferences.max_budget || 15000}
-- Bedrooms: ${preferences.min_bedrooms === 0 ? "Bedsitter" : (preferences.min_bedrooms || "Any")}
-- Must have water: ${preferences.must_have_water ? "Yes" : "No"}
-
-Here are available listings:
-${JSON.stringify(listings.slice(0, 15).map(l => ({ id: l.id, title: l.title, price: l.price, area: l.area, bedrooms: l.bedrooms, water_reliability: l.water_reliability })))}.
-
-Pick the top 3 listings that best match the user preferences.
-Rank them from best match to worst match.
-
-Return ONLY this JSON with no extra text:
-{"message": "friendly 1 sentence intro", "listings": [{"id": "use exact id from listings above", "rank": 1, "reason": "why this matches"}, {"id": "use exact id from listings above", "rank": 2, "reason": "why this matches"}, {"id": "use exact id from listings above", "rank": 3, "reason": "why this matches"}]}
-
-IMPORTANT: Only return the id, rank and reason fields. Use the EXACT id values from the listings provided above. Do not make up or modify any ids.`
+            content: `Pick top 3 listings for this user.
+Preferences: areas=${preferences.preferred_areas?.join(",")}, budget=${preferences.max_budget}, bedrooms=${preferences.min_bedrooms}, water=${preferences.must_have_water}
+Listings: ${JSON.stringify(listings.slice(0, 15).map(l => ({ id: l.id, title: l.title, price: l.price, area: l.area, bedrooms: l.bedrooms, water_reliability: l.water_reliability })))}
+Return ONLY this exact JSON format:
+{"message":"one sentence","listings":[{"id":"exact_id","rank":1,"reason":"why"},{"id":"exact_id","rank":2,"reason":"why"},{"id":"exact_id","rank":3,"reason":"why"}]}`
           }
         ],
       }),
     });
 
     const data = await response.json();
-    console.log("Recommendations:", JSON.stringify(data));
-
-    if (!data.choices) {
-      throw new Error("API error: " + JSON.stringify(data));
-    }
+    if (!data.choices) throw new Error("API error: " + JSON.stringify(data));
 
     const text = data.choices[0].message.content;
-    const clean = text.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
 
+    // Clean the response
+    let clean = text.replace(/```json|```/g, "").trim();
+
+    // Extract just the JSON object if there is extra text
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (jsonMatch) clean = jsonMatch[0];
+
+    // Fix trailing commas only
+    clean = clean
+      .replace(/,\s*}/g, '}')
+      .replace(/,\s*]/g, ']');
+
+    const parsed = JSON.parse(clean);
     return NextResponse.json(parsed);
+
   } catch (error) {
     console.error("Recommendations ERROR:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "./lib/supabase";
 import dynamic from "next/dynamic";
+import ListingCard from "./components/ListingCard";
+import Button from "./components/Button";
 const Map = dynamic(() => import("./components/Map"), { ssr: false });
 
 export default function Home() {
@@ -19,6 +21,7 @@ export default function Home() {
   const [recsMessage, setRecsMessage] = useState("");
   const [selectedListing, setSelectedListing] = useState(null);
   const [showMap, setShowMap] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const agentFiredRef = useRef(false);
   const router = useRouter();
 
@@ -58,7 +61,8 @@ export default function Home() {
           const lastRun = localStorage.getItem("agentLastRun");
           const now = Date.now();
           const oneDay = 24 * 60 * 60 * 1000;
-          if (prefs.whatsapp_number && !agentFiredRef.current && (!lastRun || now - parseInt(lastRun) > oneDay)) {
+          const alreadyRan = lastRun && (now - parseInt(lastRun) < oneDay);
+          if (prefs.whatsapp_number && !agentFiredRef.current && !alreadyRan) {
             agentFiredRef.current = true;
             localStorage.setItem("agentLastRun", now.toString());
             fetch("/api/agent", {
@@ -131,90 +135,101 @@ export default function Home() {
       router.push("/login");
       return;
     }
-
     const isWishlisted = wishlist.includes(listingId);
-
     if (isWishlisted) {
-      await supabase
-        .from("favourites")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("listing_id", listingId);
+      await supabase.from("favourites").delete().eq("user_id", user.id).eq("listing_id", listingId);
       setWishlist((prev) => prev.filter((id) => id !== listingId));
     } else {
-      await supabase
-        .from("favourites")
-        .insert({ user_id: user.id, listing_id: listingId });
+      await supabase.from("favourites").insert({ user_id: user.id, listing_id: listingId });
       setWishlist((prev) => [...prev, listingId]);
     }
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
+    <main style={{ background: "var(--color-canvas)", minHeight: "100vh", color: "var(--color-text)" }}>
 
-      <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4">
+      {/* NAVBAR */}
+      <nav style={{ background: "var(--color-brand)", borderBottom: "1px solid #3d4e41" }} className="px-4 py-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-400">NyumbaHunter</h1>
-          <div className="flex gap-4 items-center">
-            <button className="text-gray-400 hover:text-white">Listings</button>
-            <button
-              onClick={() => router.push("/chat")}
-              className="text-gray-400 hover:text-white">
-              AI Chat
-            </button>
-            <button
-              onClick={() => router.push("/preferences")}
-              className="text-gray-400 hover:text-white">
-              Preferences
-            </button>
-            <button
-              onClick={() => router.push("/wishlist")}
-              className="text-gray-400 hover:text-white">
+          <h1 className="logo text-xl font-bold" style={{ color: "var(--color-canvas)" }}>
+            NyumbaHunter
+          </h1>
+
+          <div className="hidden md:flex gap-6 items-center">
+            <button style={{ color: "var(--color-brand-lt)" }} className="hover:text-white text-sm">Listings</button>
+            <button onClick={() => router.push("/chat")} style={{ color: "var(--color-brand-lt)" }} className="hover:text-white text-sm">AI Chat</button>
+            <button onClick={() => router.push("/preferences")} style={{ color: "var(--color-brand-lt)" }} className="hover:text-white text-sm">Preferences</button>
+            <button onClick={() => router.push("/wishlist")} style={{ color: "var(--color-brand-lt)" }} className="hover:text-white text-sm">
               Wishlist
               {wishlist.length > 0 && (
-                <span className="ml-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  {wishlist.length}
-                </span>
+                <span className="ml-1 text-white text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--color-accent)" }}>{wishlist.length}</span>
               )}
             </button>
             {user ? (
-              <button
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  setUser(null);
-                  localStorage.removeItem("agentLastRun");
-                  router.push("/login");
-                }}
-                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-semibold"
-              >
+              <Button variant="ghost" onClick={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+                localStorage.removeItem("agentLastRun");
+                router.push("/login");
+              }}>
                 Log Out
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={() => router.push("/login")}
-                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold"
-              >
+              <Button variant="primary" onClick={() => router.push("/login")}>
                 Sign In
-              </button>
+              </Button>
             )}
           </div>
+
+          <div className="flex md:hidden items-center gap-3">
+            {user ? (
+              <Button variant="ghost" onClick={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+                localStorage.removeItem("agentLastRun");
+                router.push("/login");
+              }}>
+                Log Out
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={() => router.push("/login")}>
+                Sign In
+              </Button>
+            )}
+            <button onClick={() => setMenuOpen(!menuOpen)} style={{ color: "var(--color-brand-lt)" }} className="p-2 text-xl">
+              {menuOpen ? "✕" : "☰"}
+            </button>
+          </div>
         </div>
+
+        {menuOpen && (
+          <div className="md:hidden mt-3 pt-3 flex flex-col gap-2 px-4" style={{ borderTop: "1px solid #3d4e41" }}>
+            <button onClick={() => { router.push("/"); setMenuOpen(false); }} style={{ color: "var(--color-brand-lt)" }} className="text-sm text-left py-2">🏠 Listings</button>
+            <button onClick={() => { router.push("/chat"); setMenuOpen(false); }} style={{ color: "var(--color-brand-lt)" }} className="text-sm text-left py-2">🤖 AI Chat</button>
+            <button onClick={() => { router.push("/preferences"); setMenuOpen(false); }} style={{ color: "var(--color-brand-lt)" }} className="text-sm text-left py-2">⚙️ Preferences</button>
+            <button onClick={() => { router.push("/wishlist"); setMenuOpen(false); }} style={{ color: "var(--color-brand-lt)" }} className="text-sm text-left py-2">
+              ♥ Wishlist {wishlist.length > 0 && `(${wishlist.length})`}
+            </button>
+          </div>
+        )}
       </nav>
 
-      <section className="max-w-6xl mx-auto px-6 py-16 text-center">
-        <h2 className="text-5xl font-bold mb-4">
-          Find Your House in <span className="text-blue-400">Ruaka & Ruiru</span>
+      {/* HERO */}
+      <section className="max-w-6xl mx-auto px-4 py-12 md:py-16 text-center">
+        <h2 className="text-3xl md:text-5xl font-bold mb-4" style={{ color: "var(--color-text)" }}>
+          Find Your Home in <span style={{ color: "var(--color-accent)" }}>Nairobi</span>
         </h2>
-        <p className="text-gray-400 text-xl mb-8">
+        <p className="text-base md:text-xl mb-8" style={{ color: "var(--color-text-muted)" }}>
           AI-powered house hunting. Under Ksh 15,000. No agent fees.
         </p>
 
-        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-3xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="rounded-2xl p-6 max-w-3xl mx-auto" style={{ background: "white", border: "1px solid var(--color-brand-lt)", boxShadow: "var(--shadow-card)" }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <select
               value={area}
               onChange={(e) => setArea(e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
+              className="rounded-lg px-4 py-3 w-full text-sm"
+              style={{ background: "var(--color-canvas)", border: "1px solid var(--color-brand-lt)", color: "var(--color-text)" }}
             >
               <option value="All">All Areas</option>
               <option value="ruaka">Ruaka</option>
@@ -225,7 +240,8 @@ export default function Home() {
             <select
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
-              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
+              className="rounded-lg px-4 py-3 w-full text-sm"
+              style={{ background: "var(--color-canvas)", border: "1px solid var(--color-brand-lt)", color: "var(--color-text)" }}
             >
               <option value={8000}>Ksh 8,000</option>
               <option value={10000}>Ksh 10,000</option>
@@ -236,7 +252,8 @@ export default function Home() {
             <select
               value={bedrooms}
               onChange={(e) => setBedrooms(e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white w-full"
+              className="rounded-lg px-4 py-3 w-full text-sm"
+              style={{ background: "var(--color-canvas)", border: "1px solid var(--color-brand-lt)", color: "var(--color-text)" }}
             >
               <option value="All">Bedrooms</option>
               <option value="0">Bedsitter</option>
@@ -244,33 +261,32 @@ export default function Home() {
               <option value="2">2 Bedrooms</option>
             </select>
           </div>
-          <button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-lg transition">
+          <Button variant="primary" className="w-full mt-4 text-base">
             Search Houses
-          </button>
+          </Button>
         </div>
       </section>
 
+      {/* RECOMMENDATIONS */}
       {user && (recsLoading || recommendations.length > 0) && (
-        <section className="max-w-6xl mx-auto px-6 pb-10">
+        <section className="max-w-6xl mx-auto px-4 pb-12">
           <div className="flex items-center gap-3 mb-6">
-            <h3 className="text-2xl font-bold">✨ Recommended for you</h3>
-            {recsLoading && (
-              <span className="text-gray-500 text-sm">Finding best matches...</span>
-            )}
+            <h3 className="text-xl md:text-2xl font-bold">✨ Recommended for you</h3>
+            {recsLoading && <span className="text-sm" style={{ color: "var(--color-text-faint)" }}>Finding best matches...</span>}
           </div>
 
           {recsMessage && !recsLoading && (
-            <p className="text-gray-400 text-sm mb-6">{recsMessage}</p>
+            <p className="text-sm mb-6" style={{ color: "var(--color-text-muted)" }}>{recsMessage}</p>
           )}
 
           {recsLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden animate-pulse">
-                  <div className="bg-gray-800 h-48" />
-                  <div className="p-5 space-y-3">
-                    <div className="bg-gray-800 h-4 rounded w-3/4" />
-                    <div className="bg-gray-800 h-3 rounded w-1/2" />
+                <div key={n} className="rounded-3xl overflow-hidden animate-pulse" style={{ background: "white", boxShadow: "var(--shadow-card)" }}>
+                  <div className="h-52" style={{ background: "var(--color-brand-lt)" }} />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 rounded w-3/4" style={{ background: "var(--color-brand-lt)" }} />
+                    <div className="h-3 rounded w-1/2" style={{ background: "var(--color-brand-lt)" }} />
                   </div>
                 </div>
               ))}
@@ -278,45 +294,16 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {recommendations.map((listing) => (
-                <div
-                  key={listing.id}
-                  className="bg-gray-900 border border-blue-800 rounded-2xl overflow-hidden hover:border-blue-500 transition cursor-pointer"
-                >
-                  <div className="bg-gray-700 h-48 flex items-center justify-center text-gray-500 text-sm">
-                    Photos coming soon
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">
-                        {listing.rank === 1 ? "🥇" : listing.rank === 2 ? "🥈" : "🥉"}
-                      </span>
-                      <h4 className="font-bold text-lg">{listing.title}</h4>
-                    </div>
-                    <p className="text-blue-400 font-bold mb-2">
-                      Ksh {listing.price?.toLocaleString()}
-                    </p>
-                    <p className="text-green-400 text-xs mb-3 bg-green-900/20 border border-green-800 rounded-lg px-3 py-2">
-                      💡 {listing.reason}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => router.push(`/listing/${listing.id}`)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition"
-                      >
-                        View Details
-                      </button>
-                      <button
-                        onClick={() => toggleWishlist(listing.id)}
-                        className={`px-3 py-2 border rounded-lg transition ${
-                          wishlist.includes(listing.id)
-                            ? "border-red-400 text-red-400"
-                            : "border-gray-600 text-gray-400 hover:border-red-400 hover:text-red-400"
-                        }`}
-                      >
-                        {wishlist.includes(listing.id) ? "♥" : "♡"}
-                      </button>
-                    </div>
-                  </div>
+                <div key={listing.id}>
+                  <ListingCard
+                    listing={listing}
+                    isWishlisted={wishlist.includes(listing.id)}
+                    onToggleWishlist={toggleWishlist}
+                    onViewDetails={(id) => router.push(`/listing/${id}`)}
+                  />
+                  <p className="text-xs mt-2 rounded-lg px-3 py-2" style={{ color: "var(--color-ai-text)", background: "var(--color-ai-bg)", border: "1px solid var(--color-ai-border)" }}>
+                    ✦ {listing.reason}
+                  </p>
                 </div>
               ))}
             </div>
@@ -324,86 +311,53 @@ export default function Home() {
         </section>
       )}
 
-      <section className="max-w-6xl mx-auto px-6 pb-16">
+      {/* LISTINGS */}
+      <section className="max-w-6xl mx-auto px-4 pb-16">
         <div className="flex items-center gap-4 mb-6">
-          <h3 className="text-2xl font-bold">
+          <h3 className="text-xl md:text-2xl font-bold" style={{ color: "var(--color-text)" }}>
             Available Now{" "}
-            <span className="text-blue-400 text-lg font-normal ml-2">
+            <span className="text-base font-normal ml-2" style={{ color: "var(--color-text-muted)" }}>
               {loading ? "..." : `${filteredListings.length} listings`}
             </span>
           </h3>
           <div className="flex gap-2 ml-auto">
-            <button
-              onClick={() => setShowMap(false)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                !showMap ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"
-              }`}
-            >
+            <Button variant={!showMap ? "brand" : "ghost"} onClick={() => setShowMap(false)}>
               Grid
-            </button>
-            <button
-              onClick={() => setShowMap(true)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                showMap ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"
-              }`}
-            >
+            </Button>
+            <Button variant={showMap ? "brand" : "ghost"} onClick={() => setShowMap(true)}>
               Map
-            </button>
+            </Button>
           </div>
         </div>
 
         {showMap ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
-              <Map
-                listings={filteredListings}
-                onListingClick={(listing) => setSelectedListing(listing)}
-              />
+              <Map listings={filteredListings} onListingClick={(listing) => setSelectedListing(listing)} />
             </div>
             <div>
               {selectedListing ? (
-                <div className="bg-gray-900 border border-blue-700 rounded-2xl p-5">
-                  <div className="bg-gray-700 h-40 rounded-xl flex items-center justify-center text-gray-500 text-sm mb-4">
-                    Photos coming soon
+                <div className="rounded-3xl overflow-hidden" style={{ background: "white", boxShadow: "var(--shadow-card)" }}>
+                  <ListingCard
+                    listing={selectedListing}
+                    isWishlisted={wishlist.includes(selectedListing.id)}
+                    onToggleWishlist={toggleWishlist}
+                    onViewDetails={(id) => router.push(`/listing/${id}`)}
+                  />
+                  <div className="px-4 pb-4">
+                    <button
+                      onClick={() => setSelectedListing(null)}
+                      className="w-full mt-2 text-sm"
+                      style={{ color: "var(--color-text-faint)" }}
+                    >
+                      Close
+                    </button>
                   </div>
-                  <h4 className="font-bold text-lg mb-1">{selectedListing.title}</h4>
-                  <p className="text-blue-400 font-bold text-xl mb-3">
-                    Ksh {selectedListing.price?.toLocaleString()}/month
-                  </p>
-                  <div className="space-y-2 mb-4">
-                    <p className="text-gray-400 text-sm">
-                      🛏️ {selectedListing.bedrooms === 0 ? "Bedsitter" : `${selectedListing.bedrooms} Bedroom`}
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      💧 Water: {selectedListing.water_reliability}
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      🔒 Security: {selectedListing.security_rating}/10
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      🛣️ Road: {selectedListing.road_quality}
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      🪑 {selectedListing.furnished ? "Furnished" : "Unfurnished"}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => router.push(`/listing/${selectedListing.id}`)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition"
-                  >
-                    View Full Details →
-                  </button>
-                  <button
-                    onClick={() => setSelectedListing(null)}
-                    className="w-full mt-2 text-gray-500 text-sm hover:text-gray-300"
-                  >
-                    Close
-                  </button>
                 </div>
               ) : (
-                <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 text-center text-gray-500">
+                <div className="rounded-2xl p-6 text-center" style={{ background: "white", boxShadow: "var(--shadow-card)" }}>
                   <p className="text-4xl mb-3">📍</p>
-                  <p>Click any pin on the map to see listing details</p>
+                  <p style={{ color: "var(--color-text-muted)" }}>Click any pin on the map to see listing details</p>
                 </div>
               )}
             </div>
@@ -411,81 +365,35 @@ export default function Home() {
         ) : loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden animate-pulse">
-                <div className="bg-gray-800 h-48" />
-                <div className="p-5 space-y-3">
-                  <div className="bg-gray-800 h-4 rounded w-3/4" />
-                  <div className="bg-gray-800 h-3 rounded w-1/2" />
-                  <div className="bg-gray-800 h-8 rounded w-full mt-4" />
+              <div key={n} className="rounded-3xl overflow-hidden animate-pulse" style={{ background: "white", boxShadow: "var(--shadow-card)" }}>
+                <div className="h-52" style={{ background: "var(--color-brand-lt)" }} />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 rounded w-3/4" style={{ background: "var(--color-brand-lt)" }} />
+                  <div className="h-3 rounded w-1/2" style={{ background: "var(--color-brand-lt)" }} />
+                  <div className="h-8 rounded w-full mt-4" style={{ background: "var(--color-brand-lt)" }} />
                 </div>
               </div>
             ))}
           </div>
         ) : filteredListings.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
+          <div className="text-center py-20" style={{ color: "var(--color-text-muted)" }}>
             <p className="text-5xl mb-4">🏚️</p>
             <p className="text-xl">No listings found. Try different filters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredListings.map((listing) => (
-              <div
+              <ListingCard
                 key={listing.id}
-                className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden hover:border-blue-500 transition cursor-pointer"
-              >
-                <div className="bg-gray-700 h-48 flex items-center justify-center text-gray-500 text-sm">
-                  Photos coming soon
-                </div>
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-lg">{listing.title}</h4>
-                    <span className="text-blue-400 font-bold">
-                      Ksh {listing.price.toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-gray-400 text-sm mb-3">{listing.description}</p>
-
-                  <div className="flex gap-2 flex-wrap mb-4">
-                    <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded">
-                      {listing.bedrooms === 0 ? "Bedsitter" : `${listing.bedrooms} Bed`}
-                    </span>
-                    <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded">
-                      {listing.furnished ? "Furnished" : "Unfurnished"}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      listing.water_reliability === "Reliable"
-                        ? "bg-green-900 text-green-400"
-                        : "bg-yellow-900 text-yellow-400"
-                    }`}>
-                      Water: {listing.water_reliability}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => router.push(`/listing/${listing.id}`)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition"
-                    >
-                      View Details
-                    </button>
-                    <button
-                      onClick={() => toggleWishlist(listing.id)}
-                      className={`px-3 py-2 border rounded-lg transition ${
-                        wishlist.includes(listing.id)
-                          ? "border-red-400 text-red-400"
-                          : "border-gray-600 text-gray-400 hover:border-red-400 hover:text-red-400"
-                      }`}
-                    >
-                      {wishlist.includes(listing.id) ? "♥" : "♡"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+                listing={listing}
+                isWishlisted={wishlist.includes(listing.id)}
+                onToggleWishlist={toggleWishlist}
+                onViewDetails={(id) => router.push(`/listing/${id}`)}
+              />
             ))}
           </div>
         )}
       </section>
-
     </main>
   );
 }

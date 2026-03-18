@@ -6,11 +6,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+const recentCalls = {};
+
 export async function POST(request) {
   try {
     const { userId, userPhone } = await request.json();
 
-    console.log("Agent Step 1 - userId:", userId);
+    const now = Date.now();
+    if (recentCalls[userId] && now - recentCalls[userId] < 60000) {
+      console.log("Agent already ran recently for:", userId, "— skipping");
+      return NextResponse.json({ success: true, message: "Already ran recently" });
+    }
+    recentCalls[userId] = now;
+
+    console.log("Agent Step 1");
     const { data: prefs } = await supabase
       .from("preferences")
       .select("*")
